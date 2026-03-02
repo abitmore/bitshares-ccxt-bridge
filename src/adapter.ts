@@ -8,6 +8,10 @@ export class BitSharesCCXT {
   signer = new Signer();
   marketsCache: any[] = [];
 
+  setAccountName(account: string) {
+    this.signer.setAccountName(account);
+  }
+
   async describe() {
     const summary = await getSummary();
     this.marketsCache = Object.entries(summary.tickers).map(([k, v]: any) => ({

@@ -6,6 +6,10 @@ export class Signer {
   private connected = false;
   private acc: any | null = null;
 
+  setAccountName(accountName: string) {
+    this.accountName = accountName;
+  }
+
   async connect(node?: string) {
     if (!this.connected) {
       await (node ? BitShares.connect(node) : BitShares.connect());
@@ -23,6 +27,13 @@ export class Signer {
   }
 
   async balances() {
+    await this.connect();
+    if (!this.accountName) {
+      throw new Error('No account configured');
+    }
+    if (!this.acc) {
+      return this.publicBalances(this.accountName);
+    }
     const iam = await (BitShares as any).accounts[this.accountName];
     return iam.balances;
   }
@@ -57,6 +68,9 @@ export class Signer {
     price: number,
     params?: { fillOrKill?: boolean; expire?: string }
   ) {
+    if (!this.acc) {
+      throw new Error('Trading key not loaded: account is in view-only mode');
+    }
     const { base, quote } = parseSymbol(symbol);
     if (side === 'buy') {
       return this.acc.buy(quote, base, amount, price, params?.fillOrKill ?? false, params?.expire);
@@ -65,12 +79,25 @@ export class Signer {
   }
 
   async cancelOrder(orderId: string) {
+    if (!this.acc) {
+      throw new Error('Trading key not loaded: account is in view-only mode');
+    }
     return this.acc.cancelOrder(orderId);
   }
 
   async openOrders() {
-    const iam = await (BitShares as any).accounts[this.accountName];
-    const full = await (BitShares as any).db.get_full_accounts([iam.id], false);
-    return full[0][1].limit_orders;
+    await this.connect();
+    if (!this.accountName) {
+      throw new Error('No account configured');
+    }
+
+    let full;
+    if (this.acc) {
+      const iam = await (BitShares as any).accounts[this.accountName];
+      full = await (BitShares as any).db.get_full_accounts([iam.id], false);
+    } else {
+      full = await (BitShares as any).db.get_full_accounts([this.accountName], false);
+    }
+    return full?.[0]?.[1]?.limit_orders || [];
   }
 }

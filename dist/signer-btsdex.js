@@ -4,6 +4,9 @@ export class Signer {
     accountName;
     connected = false;
     acc = null;
+    setAccountName(accountName) {
+        this.accountName = accountName;
+    }
     async connect(node) {
         if (!this.connected) {
             await (node ? BitShares.connect(node) : BitShares.connect());
@@ -19,6 +22,13 @@ export class Signer {
         return this.acc;
     }
     async balances() {
+        await this.connect();
+        if (!this.accountName) {
+            throw new Error('No account configured');
+        }
+        if (!this.acc) {
+            return this.publicBalances(this.accountName);
+        }
         const iam = await BitShares.accounts[this.accountName];
         return iam.balances;
     }
@@ -47,6 +57,9 @@ export class Signer {
         });
     }
     async createLimitOrder(symbol, side, amount, price, params) {
+        if (!this.acc) {
+            throw new Error('Trading key not loaded: account is in view-only mode');
+        }
         const { base, quote } = parseSymbol(symbol);
         if (side === 'buy') {
             return this.acc.buy(quote, base, amount, price, params?.fillOrKill ?? false, params?.expire);
@@ -54,11 +67,24 @@ export class Signer {
         return this.acc.sell(base, quote, amount, price, params?.fillOrKill ?? false, params?.expire);
     }
     async cancelOrder(orderId) {
+        if (!this.acc) {
+            throw new Error('Trading key not loaded: account is in view-only mode');
+        }
         return this.acc.cancelOrder(orderId);
     }
     async openOrders() {
-        const iam = await BitShares.accounts[this.accountName];
-        const full = await BitShares.db.get_full_accounts([iam.id], false);
-        return full[0][1].limit_orders;
+        await this.connect();
+        if (!this.accountName) {
+            throw new Error('No account configured');
+        }
+        let full;
+        if (this.acc) {
+            const iam = await BitShares.accounts[this.accountName];
+            full = await BitShares.db.get_full_accounts([iam.id], false);
+        }
+        else {
+            full = await BitShares.db.get_full_accounts([this.accountName], false);
+        }
+        return full?.[0]?.[1]?.limit_orders || [];
     }
 }

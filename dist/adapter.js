@@ -6,6 +6,9 @@ export class BitSharesCCXT {
     name = 'BitShares DEX (CCXT bridge)';
     signer = new Signer();
     marketsCache = [];
+    setAccountName(account) {
+        this.signer.setAccountName(account);
+    }
     async describe() {
         const summary = await getSummary();
         this.marketsCache = Object.entries(summary.tickers).map(([k, v]) => ({

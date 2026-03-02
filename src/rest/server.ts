@@ -10,6 +10,14 @@ app.use(cors());
 app.use(express.json());
 
 const ex = new BitSharesCCXT();
+const configuredAccount = process.env.BTS_ACCOUNT ? String(process.env.BTS_ACCOUNT).trim() : '';
+const configuredWif = process.env.BTS_WIF ? String(process.env.BTS_WIF).trim() : '';
+const configuredViewOnly = String(process.env.BTS_VIEW_ONLY || '').toLowerCase() === 'true';
+
+if (configuredAccount && (configuredViewOnly || !configuredWif)) {
+  ex.setAccountName(configuredAccount);
+  console.log(`[startup] Account ${configuredAccount} loaded in view-only mode`);
+}
 
 // Small helper to wrap route handlers
 const route = (fn: (req: express.Request, res: express.Response) => Promise<any>) =>
